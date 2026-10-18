@@ -57,7 +57,7 @@ class MainActivity : Activity() {
         content.addView(title)
 
         val subtitle = TextView(this).apply {
-            text = "Android · v0.2.1"
+            text = "Android · v0.3.0"
             textSize = 14f
             setTextColor(Color.rgb(157, 163, 173))
             setPadding(0, dp(5), 0, dp(18))
@@ -91,6 +91,13 @@ class MainActivity : Activity() {
             setOnClickListener { inspectGameInstallation() }
         }
         content.addView(compatibilityButton, fullWidth())
+
+        val nativeProbeButton = Button(this).apply {
+            text = "Diagnóstico del runtime nativo"
+            isAllCaps = false
+            setOnClickListener { showNativeRuntimeReport() }
+        }
+        content.addView(nativeProbeButton, fullWidth())
 
         val refreshButton = Button(this).apply {
             text = "Actualizar biblioteca"
@@ -131,6 +138,34 @@ class MainActivity : Activity() {
         content.addView(footer)
 
         setContentView(scroll)
+    }
+
+    private external fun nativeRuntimeReport(): String
+
+    private fun showNativeRuntimeReport() {
+        try {
+            val report = nativeRuntimeReport()
+            AlertDialog.Builder(this)
+                .setTitle("Diagnóstico nativo")
+                .setMessage(report)
+                .setPositiveButton("Cerrar", null)
+                .show()
+            statusText.text = "La biblioteca JNI de NovaLoader responde correctamente; no carga mods."
+        } catch (e: UnsatisfiedLinkError) {
+            statusText.text = "La biblioteca nativa no se pudo cargar."
+            AlertDialog.Builder(this)
+                .setTitle("Runtime nativo no disponible")
+                .setMessage("No se pudo cargar la biblioteca JNI de NovaLoader. Comprueba que el APK se haya compilado con CMake.\\n\\n" + (e.message ?: "Error JNI desconocido"))
+                .setPositiveButton("Cerrar", null)
+                .show()
+        } catch (e: Exception) {
+            statusText.text = "Falló el diagnóstico nativo."
+            AlertDialog.Builder(this)
+                .setTitle("Error de diagnóstico")
+                .setMessage(e.message ?: "Error desconocido.")
+                .setPositiveButton("Cerrar", null)
+                .show()
+        }
     }
 
     /**
