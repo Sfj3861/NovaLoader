@@ -37,7 +37,7 @@ class MainActivity : Activity() {
 
     private fun buildUi() {
         val scroll = ScrollView(this).apply {
-            setBackgroundColor(Color.rgb(13, 17, 31))
+            setBackgroundColor(Color.rgb(24, 26, 31))
             isFillViewport = true
         }
         val content = LinearLayout(this).apply {
@@ -48,45 +48,45 @@ class MainActivity : Activity() {
 
         val title = TextView(this).apply {
             text = "NovaLoader"
-            textSize = 30f
+            textSize = 25f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }
         content.addView(title)
 
         val subtitle = TextView(this).apply {
-            text = "Geometry Dash · Gestor de paquetes · v0.1.0"
+            text = "Geometry Dash · Android · v0.1.0"
             textSize = 14f
-            setTextColor(Color.rgb(174, 188, 215))
+            setTextColor(Color.rgb(157, 163, 173))
             setPadding(0, dp(5), 0, dp(18))
         }
         content.addView(subtitle)
 
         val notice = TextView(this).apply {
-            text = "Versión inicial: importa y valida paquetes. Todavía no carga mods dentro del juego."
+            text = "Estado: gestor de paquetes. La carga dentro del juego aún está en desarrollo."
             textSize = 14f
-            setTextColor(Color.rgb(241, 224, 174))
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = rounded(Color.rgb(49, 43, 34), dp(12))
+            setTextColor(Color.rgb(196, 205, 183))
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = rounded(Color.rgb(34, 37, 43), dp(4))
         }
         content.addView(notice, fullWidth())
 
         val importButton = Button(this).apply {
-            text = "Importar .nova / .geode"
+            text = "+  Importar paquete"
             isAllCaps = false
-            setTextColor(Color.WHITE)
-            background = rounded(Color.rgb(83, 92, 235), dp(12))
+            setTextColor(Color.rgb(20, 25, 18))
+            background = rounded(Color.rgb(139, 195, 74), dp(5))
             setOnClickListener { choosePackage() }
         }
         val importParams = fullWidth().apply {
-            topMargin = dp(18)
-            bottomMargin = dp(8)
-            height = dp(52)
+            topMargin = dp(14)
+            bottomMargin = dp(6)
+            height = dp(48)
         }
         content.addView(importButton, importParams)
 
         val refreshButton = Button(this).apply {
-            text = "Actualizar biblioteca"
+            text = "Actualizar lista"
             isAllCaps = false
             setOnClickListener { refreshPackages() }
         }
@@ -101,7 +101,7 @@ class MainActivity : Activity() {
         content.addView(statusText)
 
         val sectionTitle = TextView(this).apply {
-            text = "MI BIBLIOTECA"
+            text = "BIBLIOTECA"
             textSize = 12f
             typeface = Typeface.DEFAULT_BOLD
             letterSpacing = 0.08f
@@ -116,7 +116,7 @@ class MainActivity : Activity() {
         content.addView(packageList, fullWidth())
 
         val footer = TextView(this).apply {
-            text = "Los archivos se guardan en el almacenamiento privado de NovaLoader. No se extraen ni ejecutan."
+            text = "Los paquetes se guardan de forma privada. No se extraen ni ejecutan."
             textSize = 12f
             setTextColor(Color.rgb(136, 149, 177))
             setPadding(0, dp(24), 0, 0)
@@ -317,7 +317,7 @@ class MainActivity : Activity() {
                 textSize = 14f
                 setTextColor(Color.rgb(174, 188, 215))
                 setPadding(dp(14), dp(16), dp(14), dp(16))
-                background = rounded(Color.rgb(25, 31, 51), dp(12))
+                background = rounded(Color.rgb(34, 37, 43), dp(4))
             }
             packageList.addView(empty, fullWidth())
         } else {
@@ -330,10 +330,10 @@ class MainActivity : Activity() {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(14), dp(12), dp(14), dp(10))
-            background = rounded(Color.rgb(25, 31, 51), dp(12))
+            background = rounded(Color.rgb(34, 37, 43), dp(12))
         }
         val title = TextView(this).apply {
-            textSize = 16f
+            textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
         }
@@ -348,14 +348,14 @@ class MainActivity : Activity() {
                 val manifest = validateNovaArchive(file)
                 title.text = manifest.optString("name", file.name)
                 details.text = ".nova · " + manifest.optString("version", "?") +
-                    " · ID: " + manifest.optString("id") + "\n" + file.name
+                    " · " + manifest.optString("id")
             } catch (_: Exception) {
                 title.text = file.name
                 details.text = ".nova · No se han podido leer los metadatos"
             }
         } else {
             title.text = file.name
-            details.text = ".geode · almacenado; todavía no ejecutable"
+            details.text = ".geode · guardado, no ejecutable"
         }
 
         card.addView(title, fullWidth())
@@ -380,7 +380,7 @@ class MainActivity : Activity() {
             }
         }
         card.addView(removeButton, fullWidth())
-        val params = fullWidth().apply { bottomMargin = dp(10) }
+        val params = fullWidth().apply { bottomMargin = dp(6) }
         packageList.addView(card, params)
     }
 
