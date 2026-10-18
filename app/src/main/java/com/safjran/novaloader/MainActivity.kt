@@ -167,7 +167,10 @@ class MainActivity : Activity() {
                 val details = if (extension == "nova") {
                     val manifest = validateNovaArchive(temporary)
                     "Validado: " + manifest.optString("name") +
-                        " (" + manifest.optString("version", "sin versión") + ")."
+                        " (" + manifest.optString("version", "sin versión") + ")." +
+                        manifest.optString("_novaCompatibilityNote").takeIf { it.isNotBlank() }
+                            ?.let { "\n" + it }.orEmpty() +
+                        "\nGuardado sin ejecutar; NOVA todavía no dispone de runtime dentro del juego."
                 } else {
                     "Archivo .geode guardado sin ejecutar; la compatibilidad de carga está pendiente."
                 }
