@@ -1,71 +1,68 @@
 # NovaLoader
 
-**NovaLoader** is an Android-first mod-loader project for Geometry Dash. Version 0.2.1 improves the installation report and keeps the package library separate from game execution.
+**NovaLoader** is an Android-first mod-loader project for Geometry Dash.
 
-> **Current status — v0.2.1:** NovaLoader can import and inspect .nova and .geode archives, store them privately, export them, and report basic Android installation information for Geometry Dash. It does **not** load mods into the game yet.
+> **Current status — v0.3.0:** NovaLoader imports, inspects, stores, exports and deletes .nova and .geode packages. It now builds a small JNI/C++ diagnostic library and reports its compiled ABI. This is a native integration probe only; **it does not load mods into Geometry Dash**.
 
 ## What's included
 
-- Kotlin Android app with private package storage.
-- .nova ZIP validation with a root manifest.json, format/version and metadata checks.
-- Archive safeguards for unsafe paths, duplicate names, entry-count limits, manifest size and expanded-size limits.
-- Informational checks of declared Android platform, ABI and Geometry Dash version metadata.
-- .geode ZIP safety checks and read-only inspection of root mod.json.
-- Export and delete actions for stored packages.
-- Geometry Dash installation report: Android package name, declared version, version code and device ABIs.
-- Confirmation before opening the installed unmodified game.
-- GitHub Actions workflow that builds a debug APK.
+- Kotlin Android app with a private package library.
+- .nova ZIP validation with root manifest, format/version and metadata checks.
+- Archive safety limits for unsafe paths, duplicate names, entry count, manifest size, archive size and expanded size.
+- Read-only .geode archive inspection through mod.json.
+- Package details, export and delete actions.
+- Geometry Dash installation report and explicit vanilla-game launch confirmation.
+- C++ shared library built with Android CMake and called through JNI.
+- In-app native diagnostic showing whether JNI responds, the compiled ABI and native pointer width.
+- GitHub Actions build workflow for the debug APK.
 
-## What is not implemented yet
+## Important limitations
 
-- No native runtime or injection into Geometry Dash.
+- No native runtime or integration into Geometry Dash's process.
 - No execution of .geode or .nova packages.
-- No dependency resolution, mod activation, or verified compatibility matrix.
-- The installation report only reads Android package metadata. A version string and ABI do not prove that a future native backend supports that exact game build.
-
-Importing a package only validates and stores it. Validation is not a malware scan; only import files from sources you trust.
+- No dependency resolution, mod activation, signature verification or verified game compatibility matrix.
+- JNI diagnostic proves only that NovaLoader's own native library can be called. It does not prove compatibility with Geometry Dash.
+- Archive validation is not a malware scan. Import packages only from sources you trust.
 
 ## Build
 
-Open the project in Android Studio with JDK 17 and Android SDK Platform 35, or run:
+Open the project in Android Studio with JDK 17, Android SDK Platform 35, Android NDK and CMake 3.22.1, or run:
 
     ./gradlew assembleDebug
 
-On Windows, use:
+On Windows:
 
     gradlew.bat assembleDebug
 
-The APK is written to app/build/outputs/apk/debug/app-debug.apk. The workflow artifact is a debug APK, not a signed release build.
+The APK is written to app/build/outputs/apk/debug/app-debug.apk. CI publishes a debug APK artifact, not a signed release build.
 
-## Creating a .nova package
+## NOVA package format
 
-A .nova file is a ZIP archive with a root-level manifest.json. The current format version is 1; see [docs/FORMAT_NOVA_V1.md](docs/FORMAT_NOVA_V1.md).
+A .nova file is a ZIP archive with a root-level manifest.json. Format v1 is documented in [docs/FORMAT_NOVA_V1.md](docs/FORMAT_NOVA_V1.md). Compatibility metadata is informational; it does not make a package executable.
 
-NOVA packages use format, formatVersion, id, name, version and optional game.versions, game.platforms and game.architectures metadata. These compatibility fields are informational; they do not make a package executable.
+Geode imports are read-only inspections of root mod.json. The .geode and .nova formats are distinct and are not interchangeable.
 
-Geode imports are read-only inspections of the root mod.json. The .geode and .nova formats are distinct.
+## Native runtime research
 
-## Architecture and research
-
+- [Native runtime feasibility report](docs/NATIVE_RUNTIME_FEASIBILITY.md)
 - [Architecture and roadmap](docs/ARCHITECTURE_AND_ROADMAP.md)
 - [Geode Android APK analysis](docs/GEODE_ANDROID_APK_ANALYSIS.md)
 
-The research suggests that real in-game loading requires a separate native bootstrap/runtime and exact-build compatibility work. NovaLoader does not copy Geode binaries or claim to use Geode's exact loading mechanism.
+The public Geode Android launcher/framework show that a real Android loader requires a native backend and exact-build compatibility work. NovaLoader studies those public projects as references; it does not bundle their binaries or Geometry Dash assets.
 
 ## Roadmap
 
 - [x] Private package library and NOVA format validation.
 - [x] Geode archive safety checks and metadata inspection.
-- [x] Package export/delete and basic Geometry Dash installation report.
-- [ ] Native feasibility prototype for a specific Android Geometry Dash build.
-- [ ] First mod loaded and verified on-device.
-- [ ] NOVA runtime contract, dependencies, recovery mode and compatibility matrix.
-- [ ] Stable v1.0 only after runtime and device testing.
+- [x] Export/delete and basic game installation report.
+- [x] JNI/CMake native integration probe.
+- [ ] Test native diagnostic on a physical device.
+- [ ] Establish compatibility for one exact Android Geometry Dash build.
+- [ ] Implement a supported backend and verify a harmless test mod on-device.
+- [ ] Safe mode/recovery and dependency handling before stable v1.0.
 
 ## Contributing
 
-Open an issue for bugs, supported Geometry Dash versions, device details and reproducible steps. Do not post proprietary game binaries, copyrighted assets or private signing keys.
+Report bugs with the device model, Android version, ABI and reproducible steps. Do not upload proprietary game binaries, copyrighted assets or private signing keys.
 
-## License
-
-See [LICENSE](LICENSE).
+See [LICENSE](LICENSE) for licensing terms.
