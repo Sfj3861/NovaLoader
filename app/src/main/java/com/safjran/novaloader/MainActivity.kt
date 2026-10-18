@@ -150,11 +150,11 @@ class MainActivity : Activity() {
             }
             val abis = android.os.Build.SUPPORTED_ABIS.joinToString(", ")
             val report = "Estado: Geometry Dash instalado" +
-                "\\nPaquete Android: " + packageName +
-                "\\nVersión declarada: " + versionName +
-                "\\nCódigo de versión: " + versionCode +
-                "\\nABI del dispositivo: " + abis +
-                "\\n\\nCompatibilidad con mods: todavía no verificada. NovaLoader no incluye aún un runtime nativo."
+                "\nPaquete Android: " + packageName +
+                "\nVersión declarada: " + versionName +
+                "\nCódigo de versión: " + versionCode +
+                "\nABI del dispositivo: " + abis +
+                "\n\nCompatibilidad con mods: todavía no verificada. NovaLoader no incluye aún un runtime nativo."
             statusText.text = "Geometry Dash detectado · versión " + versionName
             AlertDialog.Builder(this)
                 .setTitle("Informe de instalación")
