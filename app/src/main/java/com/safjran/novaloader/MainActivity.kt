@@ -57,7 +57,7 @@ class MainActivity : Activity() {
         content.addView(title)
 
         val subtitle = TextView(this).apply {
-            text = "Android · v0.2.0"
+            text = "Android · v0.2.1"
             textSize = 14f
             setTextColor(Color.rgb(157, 163, 173))
             setPadding(0, dp(5), 0, dp(18))
@@ -85,8 +85,15 @@ class MainActivity : Activity() {
         }
         content.addView(launchButton, fullWidth())
 
+        val compatibilityButton = Button(this).apply {
+            text = "Comprobar Geometry Dash"
+            isAllCaps = false
+            setOnClickListener { inspectGameInstallation() }
+        }
+        content.addView(compatibilityButton, fullWidth())
+
         val refreshButton = Button(this).apply {
-            text = "Actualizar lista"
+            text = "Actualizar biblioteca"
             isAllCaps = false
             setOnClickListener { refreshPackages() }
         }
@@ -124,6 +131,51 @@ class MainActivity : Activity() {
         content.addView(footer)
 
         setContentView(scroll)
+    }
+
+    /**
+     * Reports only what Android can verify. Package presence/version is not proof
+     * that a native mod runtime supports this exact game build.
+     */
+    private fun inspectGameInstallation() {
+        val packageName = "com.robtopx.geometryjump"
+        try {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            val versionName = info.versionName ?: "desconocida"
+            val versionCode = if (android.os.Build.VERSION.SDK_INT >= 28) {
+                info.longVersionCode
+            } else {
+                @Suppress("DEPRECATION")
+                info.versionCode.toLong()
+            }
+            val abis = android.os.Build.SUPPORTED_ABIS.joinToString(", ")
+            val report = "Estado: Geometry Dash instalado" +
+                "\\nPaquete Android: " + packageName +
+                "\\nVersión declarada: " + versionName +
+                "\\nCódigo de versión: " + versionCode +
+                "\\nABI del dispositivo: " + abis +
+                "\\n\\nCompatibilidad con mods: todavía no verificada. NovaLoader no incluye aún un runtime nativo."
+            statusText.text = "Geometry Dash detectado · versión " + versionName
+            AlertDialog.Builder(this)
+                .setTitle("Informe de instalación")
+                .setMessage(report)
+                .setPositiveButton("Cerrar", null)
+                .show()
+        } catch (_: android.content.pm.PackageManager.NameNotFoundException) {
+            statusText.text = "Geometry Dash no detectado."
+            AlertDialog.Builder(this)
+                .setTitle("Geometry Dash no detectado")
+                .setMessage("Android no encuentra el paquete " + packageName + ". Si usas una edición distinta, esta versión de NovaLoader aún no permite elegir manualmente otro paquete.")
+                .setPositiveButton("Entendido", null)
+                .show()
+        } catch (e: Exception) {
+            statusText.text = "No se pudo comprobar Geometry Dash."
+            AlertDialog.Builder(this)
+                .setTitle("No se pudo comprobar")
+                .setMessage(e.message ?: "Android no pudo leer los datos de instalación.")
+                .setPositiveButton("Cerrar", null)
+                .show()
+        }
     }
 
     private fun launchGeometryDash() {
