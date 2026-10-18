@@ -233,6 +233,7 @@ class MainActivity : Activity() {
     private fun validateNovaArchive(file: File): JSONObject {
         ZipFile(file).use { zip ->
             var entriesSeen = 0
+            var expandedBytes = 0L
             var manifestEntry: ZipEntry? = null
             val names = HashSet<String>()
             val entries = zip.entries()
@@ -247,12 +248,31 @@ class MainActivity : Activity() {
                 val normalized = entry.name.replace('\\', '/')
                 require(
                     !normalized.startsWith("/") &&
-                        normalized.split('/').none { it == ".." } &&
-                        !entry.name.contains('\\')
+                        !normalized.startsWith("//") &&
+                        !Regex("^[A-Za-z]:").containsMatchIn(normalized) &&
+                        normalized.split('/').none { it == ".." || it == "." } &&
+                        !entry.name.contains('\\') &&
+                        !entry.name.contains('\u0000')
                 ) { "La ruta de una entrada no es segura." }
                 require(names.add(entry.name)) { "El ZIP contiene nombres de entrada duplicados." }
 
+                require(!entry.name.contains('\u0000')) {
+                    "La ruta de una entrada contiene un carácter no válido."
+                }
+                if (!entry.isDirectory) {
+                    val uncompressedSize = entry.size
+                    if (uncompressedSize >= 0L) {
+                        expandedBytes += uncompressedSize
+                        require(expandedBytes <= MAX_EXPANDED_BYTES) {
+                            "El contenido expandido supera el límite de 64 MiB."
+                        }
+                    }
+                }
+
                 if (entry.name == "manifest.json" && !entry.isDirectory) {
+                    require(manifestEntry == null) {
+                        "El ZIP contiene más de un manifest.json en la raíz."
+                    }
                     manifestEntry = entry
                 }
             }
@@ -279,6 +299,33 @@ class MainActivity : Activity() {
             require(ID_PATTERN.matches(id)) { "El identificador del paquete no es válido." }
             require(json.optString("name").isNotBlank()) { "Falta el nombre del paquete." }
             require(json.optString("version").isNotBlank()) { "Falta la versión del paquete." }
+
+            // Compatibility is informational only: the archive is still never executed.
+            val game = json.optJSONObject("game")
+            val versions = game?.optJSONArray("versions")
+            val platforms = game?.optJSONArray("platforms")
+            val architectures = game?.optJSONArray("architectures")
+            val supportedAbis = android.os.Build.SUPPORTED_ABIS.toSet()
+            if (architectures != null && architectures.length() > 0) {
+                val abiMatch = (0 until architectures.length())
+                    .map { architectures.optString(it) }
+                    .any { it in supportedAbis }
+                require(abiMatch) {
+                    "El paquete no declara una arquitectura compatible con este dispositivo."
+                }
+            }
+            if (platforms != null && platforms.length() > 0) {
+                val androidTarget = (0 until platforms.length())
+                    .map { platforms.optString(it).lowercase(Locale.ROOT) }
+                    .any { it == "android" }
+                require(androidTarget) { "El paquete no declara Android como plataforma objetivo." }
+            }
+            if (versions != null && versions.length() > 0) {
+                val declaredVersions = (0 until versions.length())
+                    .map { versions.optString(it) }
+                    .joinToString(", ")
+                json.put("_novaCompatibilityNote", "Versiones de Geometry Dash declaradas: " + declaredVersions)
+            }
 
             return json
         }
