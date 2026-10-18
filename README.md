@@ -1,17 +1,18 @@
 # NovaLoader
 
-**NovaLoader** is an Android-first mod-loader project for Geometry Dash. Its first milestone focuses on a safe package library and a defined .nova package format.
+**NovaLoader** is an Android-first mod-loader project for Geometry Dash. Its current milestone focuses on a safe private package library, a defined `.nova` format and improved archive validation.
 
-> **Current status — v0.1.0 development build:** The Android package manager can import, inspect and remove .nova packages, and can store .geode files for later compatibility work. This release does not inject code into Geometry Dash and does not execute mods.
+> **Current status — v0.1.x development:** NovaLoader imports, validates and lists `.nova` packages, and stores `.geode` archives for later compatibility work. It does not inject code into Geometry Dash or execute mods.
 
 ## What's included
 
-- Native Android app written in Kotlin.
-- Private package storage; archives are not extracted to shared storage.
-- .nova ZIP validation, manifest checks and basic archive-path validation.
-- .geode file storage, clearly marked as not executable yet.
-- GitHub Actions workflow to build and publish a debug APK as an artifact.
-- Initial architecture and format documentation.
+- Kotlin Android app with private package storage.
+- `.nova` ZIP validation with root `manifest.json`, schema, identifier and metadata checks.
+- Archive safeguards for unsafe paths, duplicate names, entry-count limits, manifest size and expanded-size limits.
+- Informational checks of declared Android platform, ABI and Geometry Dash version metadata.
+- `.geode` archive storage clearly marked as non-executable.
+- GitHub Actions workflow that builds a debug APK.
+- Architecture documentation informed by static inspection of a Geode Android reference APK.
 
 ## Build
 
@@ -23,34 +24,39 @@ On Windows, use:
 
     gradlew.bat assembleDebug
 
-The lightweight Gradle launcher downloads Gradle 8.9 from the official Gradle distribution service when it is not already cached. The APK is written to app/build/outputs/apk/debug/app-debug.apk.
-
-Every push to main and every pull request runs the Android build workflow. The generated debug APK is uploaded as a workflow artifact; it is not a signed release build.
+The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Every push to `main` and every pull request runs the Android build workflow. The generated debug APK is a workflow artifact, not a signed release build.
 
 ## Creating a .nova package
 
-A .nova file is a ZIP archive with a root-level manifest.json. The current format version is 1. See docs/FORMAT_NOVA_V1.md for the first draft and an example manifest.
+A `.nova` file is a ZIP archive with a root-level `manifest.json`. The current format version is 1; see [docs/FORMAT_NOVA_V1.md](docs/FORMAT_NOVA_V1.md).
 
-NovaLoader validates package metadata and stores the archive. Fields such as entrypoint are reserved for future runtime work and are not executed by v0.1.0. Only install packages from sources you trust.
+The format's current example uses `formatVersion`, `game.versions`, `game.platforms` and `game.architectures`. NovaLoader checks any declared Android platform and ABI against the device. Declared game versions are displayed as metadata; they are not proof that the installed game's exact binary build matches. Package payloads are not extracted or executed.
+
+Only import packages from sources you trust. Validation is not a malware scan.
+
+## Geode research
+
+[Geode Android APK analysis](docs/GEODE_ANDROID_APK_ANALYSIS.md) documents the static evidence from the supplied reference APK and the limits of the conclusions. The findings suggest separate launcher/profile, native bootstrap, in-game runtime and mod-package layers. NovaLoader does not copy Geode binaries or claim to use Geode's exact loading mechanism.
 
 ## Roadmap
 
-- [x] v0.1 foundation: Android project, package library, .nova manifest validation and CI build.
-- [ ] v0.2: package details, improved error reporting, export/share and persistent package states.
+- [x] v0.1 foundation: Android app, private package library, .nova validation and CI build.
+- [x] v0.1.x: additional ZIP safety checks and declared ABI/platform metadata checks.
+- [ ] v0.2: package details, export/share and persistent package states.
 - [ ] v0.3: public SDK and developer tooling for .nova.
 - [ ] v0.4: research and prototype a version-specific Geometry Dash integration.
-- [ ] v0.5: repository/catalogue, updates and dependency resolution.
-- [ ] v0.6–v0.9: translations, permission UX, compatibility matrix, security review and testing.
+- [ ] v0.5: catalogue, updates and dependency resolution.
+- [ ] v0.6–v0.9: translations, permission UX, compatibility matrix, security review and device testing.
 - [ ] v1.0: stable release only after runtime compatibility and device testing.
 
 ## Compatibility note
 
-Recognising or storing a .geode file is not the same as running Geode mods. The in-game integration is a separate native engineering task and must be verified against the exact Geometry Dash version and CPU architecture before it is advertised as working.
+Recognising or storing a `.geode` file is not the same as running a Geode mod. NOVA's `.nova` format is separate. In-game integration is a distinct native engineering task and must be verified against exact Geometry Dash builds and CPU architectures before being advertised as working.
 
 ## Contributing
 
-Please open an issue for bugs, supported Geometry Dash versions, device details and reproducible steps. Avoid posting proprietary game binaries, copyrighted assets or private signing keys.
+Open an issue for bugs, supported Geometry Dash versions, device details and reproducible steps. Do not post proprietary game binaries, copyrighted assets or private signing keys.
 
 ## License
 
-See LICENSE.
+See [LICENSE](LICENSE).
