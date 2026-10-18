@@ -52,14 +52,14 @@ Version 1 is a ZIP archive with a root `manifest.json`. The manifest must identi
 
 1. **Launcher foundation** — game detection, explicit normal launch, truthful UI states and compatibility report.
 2. **Package manager** — metadata, install/uninstall/enable state, dependency display, integrity checks and storage management.
-3. **Native feasibility prototype** — identify exact supported game builds and ABIs; investigate lawful, maintainable integration and build a minimal non-destructive bootstrap.
+3. **Native feasibility prototype** — JNI/CMake probe added in v0.3.0; next identify exact supported game builds and ABIs and investigate a maintainable backend.
 4. **First verified mod** — load a deliberately small test mod in a controlled build; verify logs, safe mode and recovery on a real device.
 5. **Format/runtime contract** — document NOVA API and package ABI; only then enable execution for NOVA packages.
 6. **Compatibility and release** — test clean install, upgrade, failed launch, missing dependencies, invalid archives and recovery on each supported build/ABI.
 
 ## Current implementation status
 
-The Android app currently has package storage/inspection and a button that attempts to launch the installed game normally. It does **not** inject a native runtime, load Geode or NOVA mods, resolve dependencies, or provide a verified modded launch. A successful APK build proves compilation only, not in-game compatibility.
+Version 0.3.0 includes package storage/inspection, normal game launch, an installation report and a JNI/CMake diagnostic that reports NovaLoader's own native ABI. The probe does **not** inject a native runtime, load Geode or NOVA mods, resolve dependencies, or provide a verified modded launch. A successful APK build proves compilation only, not in-game compatibility. The JNI probe still needs validation on a physical device.
 
 ## Reference projects
 
