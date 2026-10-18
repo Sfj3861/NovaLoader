@@ -55,7 +55,7 @@ class MainActivity : Activity() {
         content.addView(title)
 
         val subtitle = TextView(this).apply {
-            text = "Geometry Dash · Android · v0.1.0"
+            text = "Geometry Dash · Android · v0.1.1"
             textSize = 14f
             setTextColor(Color.rgb(157, 163, 173))
             setPadding(0, dp(5), 0, dp(18))
@@ -172,7 +172,12 @@ class MainActivity : Activity() {
                             ?.let { "\n" + it }.orEmpty() +
                         "\nGuardado sin ejecutar; NOVA todavía no dispone de runtime dentro del juego."
                 } else {
-                    "Archivo .geode guardado sin ejecutar; la compatibilidad de carga está pendiente."
+                    val manifest = inspectGeodeArchive(temporary)
+                    val modName = manifest.optString("name").ifBlank { manifest.optString("id") }
+                    "Mod Geode reconocido: " + modName +
+                        " (" + manifest.optString("version", "versión desconocida") + ")." +
+                        "\nID: " + manifest.optString("id") +
+                        "\nGuardado sin ejecutar; la carga dentro del juego todavía no está implementada."
                 }
 
                 val destination = uniqueDestination(safeName)
@@ -334,6 +339,111 @@ class MainActivity : Activity() {
         }
     }
 
+    /**
+     * Reads Geode's package manifest for display and basic archive validation only.
+     * This does not load native code, resolve dependencies or execute the mod.
+     */
+    private fun inspectGeodeArchive(file: File): JSONObject {
+        ZipFile(file).use { zip ->
+            var entriesSeen = 0
+            var expandedBytes = 0L
+            var modEntry: ZipEntry? = null
+            val names = HashSet<String>()
+            val entries = zip.entries()
+
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                entriesSeen++
+                require(entriesSeen <= MAX_ARCHIVE_ENTRIES) {
+                    "El paquete Geode contiene demasiadas entradas."
+                }
+
+                val normalized = entry.name.replace('\\', '/')
+                require(
+                    normalized.isNotBlank() &&
+                        !normalized.startsWith("/") &&
+                        !Regex("^[A-Za-z]:").containsMatchIn(normalized) &&
+                        normalized.split('/').none { it == ".." || it == "." } &&
+                        !entry.name.contains('\\') &&
+                        !entry.name.contains('\u0000')
+                ) { "El archivo Geode contiene una ruta no segura." }
+                require(names.add(entry.name)) { "El ZIP Geode contiene entradas duplicadas." }
+
+                if (!entry.isDirectory && entry.size >= 0L) {
+                    expandedBytes += entry.size
+                    require(expandedBytes <= MAX_EXPANDED_BYTES) {
+                        "El contenido expandido del paquete Geode supera 64 MiB."
+                    }
+                }
+                if (entry.name == "mod.json" && !entry.isDirectory) {
+                    require(modEntry == null) { "El paquete Geode contiene más de un mod.json." }
+                    modEntry = entry
+                }
+            }
+
+            val manifest = modEntry ?: throw IllegalArgumentException(
+                "Falta mod.json en la raíz; el archivo no parece un paquete Geode válido."
+            )
+            require(manifest.size in 1..MAX_MANIFEST_BYTES.toLong()) {
+                "mod.json está vacío o supera los 256 KB."
+            }
+            val jsonText = zip.getInputStream(manifest).use {
+                String(readLimited(it, MAX_MANIFEST_BYTES), Charsets.UTF_8)
+            }
+            val json = JSONObject(jsonText)
+            require(json.optString("id").isNotBlank()) { "mod.json no contiene un ID válido." }
+            require(json.optString("version").isNotBlank()) { "mod.json no contiene una versión." }
+            return json
+        }
+    }
+
+    private fun showPackageDetails(file: File) {
+        try {
+            val isNova = file.extension.equals("nova", ignoreCase = true)
+            val manifest = if (isNova) validateNovaArchive(file) else inspectGeodeArchive(file)
+            val id = manifest.optString("id", "desconocido")
+            val name = manifest.optString("name").ifBlank { id }
+            val version = manifest.optString("version", "desconocida")
+            val author = if (isNova) manifest.optString("author") else manifest.optString("developer")
+            val description = manifest.optString("description")
+            val details = buildString {
+                append("Formato: ").append(if (isNova) "NOVA" else "Geode (.geode)")
+                append("\nID: ").append(id)
+                append("\nVersión: ").append(version)
+                if (author.isNotBlank()) append("\nAutor: ").append(author)
+                if (description.isNotBlank()) append("\n\n").append(description)
+                append("\n\nTamaño: ").append(file.length() / 1024).append(" KiB")
+                append("\nEstado: guardado en la biblioteca; no se ejecuta dentro del juego.")
+            }
+            AlertDialog.Builder(this)
+                .setTitle(name)
+                .setMessage(details)
+                .setPositiveButton("Cerrar", null)
+                .setNegativeButton("Eliminar") { _, _ ->
+                    AlertDialog.Builder(this)
+                        .setTitle("Eliminar paquete")
+                        .setMessage("¿Quieres borrar " + file.name + " de la biblioteca?")
+                        .setNegativeButton("Cancelar", null)
+                        .setPositiveButton("Eliminar") { _, _ ->
+                            if (file.delete()) {
+                                statusText.text = "Paquete eliminado."
+                                refreshPackages(updateStatus = false)
+                            } else {
+                                statusText.text = "No se ha podido eliminar el archivo."
+                            }
+                        }
+                        .show()
+                }
+                .show()
+        } catch (e: Exception) {
+            AlertDialog.Builder(this)
+                .setTitle("Paquete no válido")
+                .setMessage(e.message ?: "No se pudieron leer los metadatos.")
+                .setPositiveButton("Cerrar", null)
+                .show()
+        }
+    }
+
     private fun readLimited(input: InputStream, maxBytes: Int): ByteArray {
         val output = ByteArrayOutputStream()
         val buffer = ByteArray(4096)
@@ -404,10 +514,18 @@ class MainActivity : Activity() {
                 details.text = ".nova · No se han podido leer los metadatos"
             }
         } else {
-            title.text = file.name
-            details.text = ".geode · guardado, no ejecutable"
+            try {
+                val manifest = inspectGeodeArchive(file)
+                title.text = manifest.optString("name").ifBlank { manifest.optString("id") }.ifBlank { file.name }
+                details.text = ".geode · " + manifest.optString("version", "?") +
+                    " · " + manifest.optString("id") + " · almacenado, no ejecutable"
+            } catch (_: Exception) {
+                title.text = file.name
+                details.text = ".geode · archivo no reconocido o mod.json inválido"
+            }
         }
 
+        card.setOnClickListener { showPackageDetails(file) }
         card.addView(title, fullWidth())
         card.addView(details, fullWidth())
         val removeButton = Button(this).apply {
@@ -453,6 +571,7 @@ class MainActivity : Activity() {
         private const val REQUEST_PICK_PACKAGE = 8041
         private const val MAX_ARCHIVE_BYTES = 100L * 1024L * 1024L
         private const val MAX_ARCHIVE_ENTRIES = 1000
+        private const val MAX_EXPANDED_BYTES = 64L * 1024L * 1024L
         private const val MAX_MANIFEST_BYTES = 256 * 1024
         private val ID_PATTERN = Regex("^[A-Za-z0-9][A-Za-z0-9._-]{1,63}$")
     }

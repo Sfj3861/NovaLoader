@@ -1,8 +1,8 @@
 # NovaLoader
 
-**NovaLoader** is an Android-first mod-loader project for Geometry Dash. Its current milestone focuses on a safe private package library, a defined `.nova` format and improved archive validation.
+**NovaLoader** is an Android-first mod-loader project for Geometry Dash. Its current milestone focuses on a safe private package library, `.nova` validation and read-only inspection of Geode package metadata.
 
-> **Current status — v0.1.x development:** NovaLoader imports, validates and lists `.nova` packages, and stores `.geode` archives for later compatibility work. It does not inject code into Geometry Dash or execute mods.
+> **Current status — v0.1.x development:** NovaLoader imports, validates and lists `.nova` packages, and stores `.geode` archives and reads their root `mod.json` metadata, but does not execute them. It does not inject code into Geometry Dash or execute mods.
 
 ## What's included
 
@@ -10,7 +10,7 @@
 - `.nova` ZIP validation with root `manifest.json`, schema, identifier and metadata checks.
 - Archive safeguards for unsafe paths, duplicate names, entry-count limits, manifest size and expanded-size limits.
 - Informational checks of declared Android platform, ABI and Geometry Dash version metadata.
-- `.geode` archive storage clearly marked as non-executable.
+- `.geode` ZIP safety checks and `mod.json` metadata inspection; packages remain non-executable.
 - GitHub Actions workflow that builds a debug APK.
 - Architecture documentation informed by static inspection of a Geode Android reference APK.
 
@@ -30,7 +30,7 @@ The APK is written to `app/build/outputs/apk/debug/app-debug.apk`. Every push to
 
 A `.nova` file is a ZIP archive with a root-level `manifest.json`. The current format version is 1; see [docs/FORMAT_NOVA_V1.md](docs/FORMAT_NOVA_V1.md).
 
-The format's current example uses `formatVersion`, `game.versions`, `game.platforms` and `game.architectures`. NovaLoader checks any declared Android platform and ABI against the device. Declared game versions are displayed as metadata; they are not proof that the installed game's exact binary build matches. Package payloads are not extracted or executed.
+Geode imports are checked for safe ZIP paths and a readable root `mod.json`; NOVA packages use `formatVersion`, `game.versions`, `game.platforms` and `game.architectures`. NovaLoader checks any declared Android platform and ABI against the device. Declared game versions are displayed as metadata; they are not proof that the installed game's exact binary build matches. Package payloads are not extracted or executed.
 
 Only import packages from sources you trust. Validation is not a malware scan.
 
@@ -41,7 +41,7 @@ Only import packages from sources you trust. Validation is not a malware scan.
 ## Roadmap
 
 - [x] v0.1 foundation: Android app, private package library, .nova validation and CI build.
-- [x] v0.1.x: additional ZIP safety checks and declared ABI/platform metadata checks.
+- [x] v0.1.x: additional ZIP safety checks, declared ABI/platform metadata checks and Geode `mod.json` inspection.
 - [ ] v0.2: package details, export/share and persistent package states.
 - [ ] v0.3: public SDK and developer tooling for .nova.
 - [ ] v0.4: research and prototype a version-specific Geometry Dash integration.
