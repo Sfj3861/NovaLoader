@@ -57,7 +57,7 @@ class MainActivity : Activity() {
         content.addView(title)
 
         val subtitle = TextView(this).apply {
-            text = "Android · v0.1.1"
+            text = "Android · v0.2.0"
             textSize = 14f
             setTextColor(Color.rgb(157, 163, 173))
             setPadding(0, dp(5), 0, dp(18))
@@ -77,6 +77,13 @@ class MainActivity : Activity() {
             height = dp(48)
         }
         content.addView(importButton, importParams)
+
+        val launchButton = Button(this).apply {
+            text = "Abrir Geometry Dash"
+            isAllCaps = false
+            setOnClickListener { launchGeometryDash() }
+        }
+        content.addView(launchButton, fullWidth())
 
         val refreshButton = Button(this).apply {
             text = "Actualizar lista"
@@ -109,7 +116,7 @@ class MainActivity : Activity() {
         content.addView(packageList, fullWidth())
 
         val footer = TextView(this).apply {
-            text = "Los paquetes se guardan de forma privada. No se extraen ni ejecutan."
+            text = "El botón de juego abre la versión instalada sin modificar. Los mods aún no se ejecutan: falta integrar y probar el runtime nativo."
             textSize = 12f
             setTextColor(Color.rgb(136, 149, 177))
             setPadding(0, dp(24), 0, 0)
@@ -117,6 +124,34 @@ class MainActivity : Activity() {
         content.addView(footer)
 
         setContentView(scroll)
+    }
+
+    private fun launchGeometryDash() {
+        val packageName = "com.robtopx.geometryjump"
+        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
+        if (launchIntent == null) {
+            statusText.text = "Geometry Dash no está instalado o Android no permite detectarlo."
+            AlertDialog.Builder(this)
+                .setTitle("Geometry Dash no detectado")
+                .setMessage("Instala Geometry Dash y vuelve a intentarlo. Esta versión solo puede abrir el juego normal; todavía no carga mods dentro del proceso del juego.")
+                .setPositiveButton("Entendido", null)
+                .show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Abrir Geometry Dash")
+            .setMessage("Esta acción abrirá Geometry Dash tal como está instalado. Los paquetes de NovaLoader todavía no se aplican al juego.")
+            .setNegativeButton("Cancelar", null)
+            .setPositiveButton("Abrir juego") { _, _ ->
+                try {
+                    startActivity(launchIntent)
+                    statusText.text = "Geometry Dash abierto sin modificaciones de NovaLoader."
+                } catch (e: Exception) {
+                    statusText.text = "No se pudo abrir Geometry Dash: " + (e.message ?: "error desconocido")
+                }
+            }
+            .show()
     }
 
     private fun choosePackage() {
