@@ -14,6 +14,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.view.View
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -25,6 +26,7 @@ import java.util.zip.ZipFile
 class MainActivity : Activity() {
     private lateinit var packageList: LinearLayout
     private lateinit var statusText: TextView
+    private var pendingExport: File? = null
     private val packageDirectory: File by lazy {
         File(filesDir, "packages").apply { mkdirs() }
     }
@@ -55,21 +57,12 @@ class MainActivity : Activity() {
         content.addView(title)
 
         val subtitle = TextView(this).apply {
-            text = "Geometry Dash · Android · v0.1.1"
+            text = "Android · v0.1.1"
             textSize = 14f
             setTextColor(Color.rgb(157, 163, 173))
             setPadding(0, dp(5), 0, dp(18))
         }
         content.addView(subtitle)
-
-        val notice = TextView(this).apply {
-            text = "Estado: gestor de paquetes. La carga dentro del juego aún está en desarrollo."
-            textSize = 14f
-            setTextColor(Color.rgb(196, 205, 183))
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = rounded(Color.rgb(34, 37, 43), dp(4))
-        }
-        content.addView(notice, fullWidth())
 
         val importButton = Button(this).apply {
             text = "+  Importar paquete"
@@ -142,6 +135,24 @@ class MainActivity : Activity() {
     @Deprecated("Uses the compatible document-picker callback")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_EXPORT_PACKAGE) {
+            val exportUri = if (resultCode == RESULT_OK) data?.data else null
+            val file = pendingExport
+            pendingExport = null
+            if (exportUri != null && file != null) {
+                try {
+                    val output = contentResolver.openOutputStream(exportUri)
+                        ?: throw IllegalArgumentException("No se pudo abrir el destino de exportación.")
+                    file.inputStream().buffered().use { input ->
+                        output.buffered().use { target -> input.copyTo(target) }
+                    }
+                    statusText.text = "Paquete exportado: " + file.name
+                } catch (e: Exception) {
+                    statusText.text = "No se pudo exportar: " + (e.message ?: "error de escritura")
+                }
+            }
+            return
+        }
         if (requestCode != REQUEST_PICK_PACKAGE || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
 
@@ -191,6 +202,21 @@ class MainActivity : Activity() {
             refreshPackages(updateStatus = false)
         } catch (e: Exception) {
             statusText.text = "No se ha importado: " + (e.message ?: "archivo no válido")
+        }
+    }
+
+    private fun exportPackage(file: File) {
+        pendingExport = file
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_TITLE, file.name)
+        }
+        try {
+            startActivityForResult(intent, REQUEST_EXPORT_PACKAGE)
+        } catch (_: Exception) {
+            pendingExport = null
+            statusText.text = "No se ha podido abrir el destino de exportación."
         }
     }
 
@@ -489,8 +515,7 @@ class MainActivity : Activity() {
     private fun addPackageRow(file: File) {
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(10))
-            background = rounded(Color.rgb(34, 37, 43), dp(12))
+            setPadding(dp(2), dp(8), dp(2), dp(8))
         }
         val title = TextView(this).apply {
             textSize = 14f
@@ -528,8 +553,16 @@ class MainActivity : Activity() {
         card.setOnClickListener { showPackageDetails(file) }
         card.addView(title, fullWidth())
         card.addView(details, fullWidth())
+        val actions = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        val exportButton = Button(this).apply {
+            text = "Exportar"
+            isAllCaps = false
+            setOnClickListener { exportPackage(file) }
+        }
         val removeButton = Button(this).apply {
-            text = "Eliminar de la biblioteca"
+            text = "Eliminar"
             isAllCaps = false
             setOnClickListener {
                 AlertDialog.Builder(this@MainActivity)
@@ -547,9 +580,14 @@ class MainActivity : Activity() {
                     .show()
             }
         }
-        card.addView(removeButton, fullWidth())
-        val params = fullWidth().apply { bottomMargin = dp(6) }
-        packageList.addView(card, params)
+        actions.addView(exportButton, LinearLayout.LayoutParams(0, dp(44), 1f))
+        actions.addView(removeButton, LinearLayout.LayoutParams(0, dp(44), 1f))
+        card.addView(actions, fullWidth())
+        packageList.addView(card, fullWidth())
+        val separator = View(this).apply { setBackgroundColor(Color.rgb(55, 59, 66)) }
+        packageList.addView(separator, LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, dp(1)
+        ))
     }
 
     private fun rounded(color: Int, radius: Int): GradientDrawable =
@@ -569,6 +607,7 @@ class MainActivity : Activity() {
 
     companion object {
         private const val REQUEST_PICK_PACKAGE = 8041
+        private const val REQUEST_EXPORT_PACKAGE = 8042
         private const val MAX_ARCHIVE_BYTES = 100L * 1024L * 1024L
         private const val MAX_ARCHIVE_ENTRIES = 1000
         private const val MAX_EXPANDED_BYTES = 64L * 1024L * 1024L

@@ -11,6 +11,7 @@
 - Archive safeguards for unsafe paths, duplicate names, entry-count limits, manifest size and expanded-size limits.
 - Informational checks of declared Android platform, ABI and Geometry Dash version metadata.
 - `.geode` ZIP safety checks and `mod.json` metadata inspection; packages remain non-executable.
+- Export of stored packages through Android’s document picker.
 - GitHub Actions workflow that builds a debug APK.
 - Architecture documentation informed by static inspection of a Geode Android reference APK.
 
