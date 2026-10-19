@@ -226,14 +226,14 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     val message = buildString {
                         append("Copia del entorno preparada.")
-                        append("\\nVersión: ").append(result.versionName)
-                        append("\\nCódigo: ").append(result.versionCode)
-                        append("\\nAPK/s copiados: ").append(result.apkCount)
-                        append("\\nBibliotecas nativas copiadas: ").append(result.nativeLibraryCount)
-                        append("\\n\\nLos archivos originales no se han modificado.")
-                        append("\\n\\nMods: game-environment/mods")
-                        append("\\nCopia del juego: game-environment/game-files")
-                        append("\\n\\nImportante: Android no puede ejecutar esta copia desde una carpeta privada.")
+                        append("\nVersión: ").append(result.versionName)
+                        append("\nCódigo: ").append(result.versionCode)
+                        append("\nAPK/s copiados: ").append(result.apkCount)
+                        append("\nBibliotecas nativas copiadas: ").append(result.nativeLibraryCount)
+                        append("\n\\nLos archivos originales no se han modificado.")
+                        append("\n\\nMods: game-environment/mods")
+                        append("\nCopia del juego: game-environment/game-files")
+                        append("\n\\nImportante: Android no puede ejecutar esta copia desde una carpeta privada.")
                         append(" La integración del runtime y la generación de una variante instalable aún están pendientes.")
                     }
                     statusText.text = "Entorno copiado · " + result.versionName + " · runtime pendiente"
@@ -260,7 +260,6 @@ class MainActivity : Activity() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
-            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/zip", "application/octet-stream"))
         }
         try {
             startActivityForResult(intent, REQUEST_PICK_PACKAGE)
@@ -293,34 +292,36 @@ class MainActivity : Activity() {
         if (requestCode != REQUEST_PICK_PACKAGE || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
 
-        try {
-            val displayName = queryDisplayName(uri)
-            val extension = displayName.substringAfterLast('.', "").lowercase(Locale.ROOT)
-            require(extension == "nova" || extension == "geode") {
-                "El archivo debe terminar en .nova o .geode."
-            }
-
-            val safeName = displayName
-                .substringAfterLast('/')
-                .replace(Regex("[^A-Za-z0-9._ -]"), "_")
-                .take(120)
-                .ifBlank { "package." + extension }
-
-            val temporary = File.createTempFile("nova-import-", ".part", packageDirectory)
+        statusText.text = "Importando y comprobando el paquete…"
+        Thread {
+            var temporary: File? = null
             try {
+                val displayName = queryDisplayName(uri)
+                val extension = displayName.substringAfterLast('.', "").lowercase(Locale.ROOT)
+                require(extension == "nova" || extension == "geode") {
+                    "El archivo debe terminar en .nova o .geode."
+                }
+
+                val safeName = displayName
+                    .substringAfterLast('/')
+                    .replace(Regex("[^A-Za-z0-9._ -]"), "_")
+                    .take(120)
+                    .ifBlank { "package." + extension }
+
+                temporary = File.createTempFile("nova-import-", ".part", packageDirectory)
                 val input = contentResolver.openInputStream(uri)
                     ?: throw IllegalArgumentException("No se pudo leer el archivo.")
-                input.use { copyWithLimit(it, temporary, MAX_ARCHIVE_BYTES) }
+                input.use { copyWithLimit(it, temporary!!, MAX_ARCHIVE_BYTES) }
 
                 val details = if (extension == "nova") {
-                    val manifest = validateNovaArchive(temporary)
+                    val manifest = validateNovaArchive(temporary!!)
                     "Validado: " + manifest.optString("name") +
                         " (" + manifest.optString("version", "sin versión") + ")." +
                         manifest.optString("_novaCompatibilityNote").takeIf { it.isNotBlank() }
                             ?.let { "\n" + it }.orEmpty() +
                         "\nGuardado sin ejecutar; NOVA todavía no dispone de runtime dentro del juego."
                 } else {
-                    val manifest = inspectGeodeArchive(temporary)
+                    val manifest = inspectGeodeArchive(temporary!!)
                     val modName = manifest.optString("name").ifBlank { manifest.optString("id") }
                     "Mod Geode reconocido: " + modName +
                         " (" + manifest.optString("version", "versión desconocida") + ")." +
@@ -328,18 +329,27 @@ class MainActivity : Activity() {
                         "\nGuardado sin ejecutar; la carga dentro del juego todavía no está implementada."
                 }
 
+                // Read every entry, not just the manifest: catches corrupt payloads and
+                // enforces the expanded-size limit using actual bytes rather than ZIP metadata.
+                verifyArchivePayloads(temporary!!)
                 val destination = uniqueDestination(safeName)
-                if (!temporary.renameTo(destination)) {
+                if (!temporary!!.renameTo(destination)) {
                     throw IllegalStateException("No se pudo guardar el paquete.")
                 }
-                statusText.text = "Importación correcta: " + destination.name + "\n" + details
+                temporary = null
+
+                runOnUiThread {
+                    statusText.text = "Importación correcta: " + destination.name + "\n" + details
+                    refreshPackages(updateStatus = false)
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "No se ha importado: " + (e.message ?: "archivo no válido")
+                }
             } finally {
-                if (temporary.exists()) temporary.delete()
+                temporary?.takeIf { it.exists() }?.delete()
             }
-            refreshPackages(updateStatus = false)
-        } catch (e: Exception) {
-            statusText.text = "No se ha importado: " + (e.message ?: "archivo no válido")
-        }
+        }.start()
     }
 
     private fun exportPackage(file: File) {
@@ -383,6 +393,37 @@ class MainActivity : Activity() {
                 total += count.toLong()
                 require(total <= maxBytes) { "El archivo supera el límite de 100 MB." }
                 output.write(buffer, 0, count)
+            }
+        }
+    }
+
+    /**
+     * Fully reads each ZIP entry so truncated/CRC-invalid payloads are rejected before
+     * the file enters the library. Uses actual decompressed bytes to stop ZIP bombs.
+     */
+    private fun verifyArchivePayloads(file: File) {
+        ZipFile(file).use { zip ->
+            var entriesSeen = 0
+            var expandedBytes = 0L
+            val buffer = ByteArray(16 * 1024)
+            val entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                entriesSeen++
+                require(entriesSeen <= MAX_ARCHIVE_ENTRIES) {
+                    "El paquete contiene demasiadas entradas."
+                }
+                if (entry.isDirectory) continue
+                zip.getInputStream(entry).buffered().use { input ->
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
+                        expandedBytes += count.toLong()
+                        require(expandedBytes <= MAX_EXPANDED_BYTES) {
+                            "El contenido expandido supera el límite de 64 MiB."
+                        }
+                    }
+                }
             }
         }
     }
