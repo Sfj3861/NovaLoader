@@ -57,7 +57,7 @@ class MainActivity : Activity() {
         content.addView(title)
 
         val subtitle = TextView(this).apply {
-            text = "Android · v0.4.0"
+            text = "Android · v0.4.1"
             textSize = 14f
             setTextColor(Color.rgb(157, 163, 173))
             setPadding(0, dp(5), 0, dp(18))
@@ -230,10 +230,10 @@ class MainActivity : Activity() {
                         append("\nCódigo: ").append(result.versionCode)
                         append("\nAPK/s copiados: ").append(result.apkCount)
                         append("\nBibliotecas nativas copiadas: ").append(result.nativeLibraryCount)
-                        append("\n\\nLos archivos originales no se han modificado.")
-                        append("\n\\nMods: game-environment/mods")
+                        append("\n\nLos archivos originales no se han modificado.")
+                        append("\n\nMods: game-environment/mods")
                         append("\nCopia del juego: game-environment/game-files")
-                        append("\n\\nImportante: Android no puede ejecutar esta copia desde una carpeta privada.")
+                        append("\n\nImportante: Android no puede ejecutar esta copia desde una carpeta privada.")
                         append(" La integración del runtime y la generación de una variante instalable aún están pendientes.")
                     }
                     statusText.text = "Entorno copiado · " + result.versionName + " · runtime pendiente"
