@@ -1,4 +1,4 @@
-# Native runtime feasibility — research and prototype (v0.3.0)
+# Native runtime feasibility — research and prototype (v0.4.0)
 
 ## Research findings
 
