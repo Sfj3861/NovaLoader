@@ -2,7 +2,7 @@
 
 **NovaLoader** is an Android-first mod-loader project for Geometry Dash.
 
-> **Current status — v0.3.0:** NovaLoader imports, inspects, stores, exports and deletes .nova and .geode packages. It now builds a small JNI/C++ diagnostic library and reports its compiled ABI. This is a native integration probe only; **it does not load mods into Geometry Dash**.
+> **Current status — v0.4.0:** NovaLoader imports, inspects, stores, exports and deletes .nova and .geode packages. It now stages the installed game's base/split APKs and extracted native libraries into a private workspace, records hashes and version metadata, and stores packages under the workspace's `mods/` directory. **The staged copy is not yet executable and mods are not yet loaded into Geometry Dash**: runtime integration and creation of an installable variant remain unfinished.
 
 ## What's included
 
@@ -11,7 +11,9 @@
 - Archive safety limits for unsafe paths, duplicate names, entry count, manifest size, archive size and expanded size.
 - Read-only .geode archive inspection through mod.json.
 - Package details, export and delete actions.
-- Geometry Dash installation report and explicit vanilla-game launch confirmation.
+- Geometry Dash environment staging: copies the installed APK set and native libraries without changing the original installation.
+- Workspace layout: `files/game-environment/game-files/` for copied game files and `files/game-environment/mods/` for package storage.
+- Environment metadata with package/version/ABI details and SHA-256 hashes for copied APKs.
 - C++ shared library built with Android CMake and called through JNI.
 - In-app native diagnostic showing whether JNI responds, the compiled ABI and native pointer width.
 - GitHub Actions build workflow for the debug APK.
