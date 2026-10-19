@@ -28,7 +28,7 @@ class MainActivity : Activity() {
     private lateinit var statusText: TextView
     private var pendingExport: File? = null
     private val packageDirectory: File by lazy {
-        File(filesDir, "packages").apply { mkdirs() }
+        File(filesDir, "game-environment/mods").apply { mkdirs() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,7 +57,7 @@ class MainActivity : Activity() {
         content.addView(title)
 
         val subtitle = TextView(this).apply {
-            text = "Android · v0.3.0"
+            text = "Android · v0.4.0"
             textSize = 14f
             setTextColor(Color.rgb(157, 163, 173))
             setPadding(0, dp(5), 0, dp(18))
@@ -79,9 +79,9 @@ class MainActivity : Activity() {
         content.addView(importButton, importParams)
 
         val launchButton = Button(this).apply {
-            text = "Abrir Geometry Dash"
+            text = "Preparar entorno / Abrir Geometry Dash"
             isAllCaps = false
-            setOnClickListener { launchGeometryDash() }
+            setOnClickListener { prepareGameEnvironment() }
         }
         content.addView(launchButton, fullWidth())
 
@@ -130,7 +130,7 @@ class MainActivity : Activity() {
         content.addView(packageList, fullWidth())
 
         val footer = TextView(this).apply {
-            text = "El botón de juego abre la versión instalada sin modificar. Los mods aún no se ejecutan: falta integrar y probar el runtime nativo."
+            text = "NovaLoader copia los APK y las bibliotecas del juego a un entorno privado y mantiene la instalación original intacta. La copia todavía necesita un runtime y un paquete ejecutable para iniciar el juego con mods."
             textSize = 12f
             setTextColor(Color.rgb(136, 149, 177))
             setPadding(0, dp(24), 0, 0)
@@ -213,32 +213,47 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun launchGeometryDash() {
-        val packageName = "com.robtopx.geometryjump"
-        val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
-        if (launchIntent == null) {
-            statusText.text = "Geometry Dash no está instalado o Android no permite detectarlo."
-            AlertDialog.Builder(this)
-                .setTitle("Geometry Dash no detectado")
-                .setMessage("Instala Geometry Dash y vuelve a intentarlo. Esta versión solo puede abrir el juego normal; todavía no carga mods dentro del proceso del juego.")
-                .setPositiveButton("Entendido", null)
-                .show()
-            return
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("Abrir Geometry Dash")
-            .setMessage("Esta acción abrirá Geometry Dash tal como está instalado. Los paquetes de NovaLoader todavía no se aplican al juego.")
-            .setNegativeButton("Cancelar", null)
-            .setPositiveButton("Abrir juego") { _, _ ->
-                try {
-                    startActivity(launchIntent)
-                    statusText.text = "Geometry Dash abierto sin modificaciones de NovaLoader."
-                } catch (e: Exception) {
-                    statusText.text = "No se pudo abrir Geometry Dash: " + (e.message ?: "error desconocido")
+    /**
+     * Stage a private copy of the installed game before enabling future mod integration.
+     * Android cannot launch an APK directly from this private directory; this is not yet
+     * a runnable modded build.
+     */
+    private fun prepareGameEnvironment() {
+        statusText.text = "Copiando Geometry Dash al entorno privado…"
+        Thread {
+            try {
+                val result = GameEnvironment(this@MainActivity).prepare()
+                runOnUiThread {
+                    val message = buildString {
+                        append("Copia del entorno preparada.")
+                        append("\\nVersión: ").append(result.versionName)
+                        append("\\nCódigo: ").append(result.versionCode)
+                        append("\\nAPK/s copiados: ").append(result.apkCount)
+                        append("\\nBibliotecas nativas copiadas: ").append(result.nativeLibraryCount)
+                        append("\\n\\nLos archivos originales no se han modificado.")
+                        append("\\n\\nMods: game-environment/mods")
+                        append("\\nCopia del juego: game-environment/game-files")
+                        append("\\n\\nImportante: Android no puede ejecutar esta copia desde una carpeta privada.")
+                        append(" La integración del runtime y la generación de una variante instalable aún están pendientes.")
+                    }
+                    statusText.text = "Entorno copiado · " + result.versionName + " · runtime pendiente"
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("Entorno de Geometry Dash preparado")
+                        .setMessage(message)
+                        .setPositiveButton("Entendido", null)
+                        .show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "No se pudo preparar el entorno."
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("No se pudo copiar Geometry Dash")
+                        .setMessage(e.message ?: "Error desconocido al copiar la instalación.")
+                        .setPositiveButton("Cerrar", null)
+                        .show()
                 }
             }
-            .show()
+        }.start()
     }
 
     private fun choosePackage() {
