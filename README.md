@@ -68,3 +68,10 @@ The public Geode Android launcher/framework show that a real Android loader requ
 Report bugs with the device model, Android version, ABI and reproducible steps. Do not upload proprietary game binaries, copyrighted assets or private signing keys.
 
 See [LICENSE](LICENSE) for licensing terms.
+
+## v0.4.1 — importación reforzada
+
+- El selector de archivos acepta proveedores de documentos con MIME distinto de ZIP, siempre que el nombre termine en `.nova` o `.geode`.
+- La copia, la validación de metadatos y la verificación de las entradas ZIP se ejecutan en segundo plano.
+- Antes de guardar un paquete, NovaLoader lee todas las entradas y aplica el límite de 64 MiB al contenido realmente expandido para detectar archivos truncados o dañados.
+- Los paquetes siguen guardándose sin ejecutarse: la integración del runtime nativo continúa pendiente.
