@@ -20,6 +20,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.util.Locale
+import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 
@@ -414,14 +415,28 @@ class MainActivity : Activity() {
                     "El paquete contiene demasiadas entradas."
                 }
                 if (entry.isDirectory) continue
+                val checksum = CRC32()
+                var actualEntryBytes = 0L
                 zip.getInputStream(entry).buffered().use { input ->
                     while (true) {
                         val count = input.read(buffer)
                         if (count < 0) break
+                        actualEntryBytes += count.toLong()
                         expandedBytes += count.toLong()
+                        checksum.update(buffer, 0, count)
                         require(expandedBytes <= MAX_EXPANDED_BYTES) {
                             "El contenido expandido supera el límite de 64 MiB."
                         }
+                    }
+                }
+                if (entry.size >= 0L) {
+                    require(actualEntryBytes == entry.size) {
+                        "La entrada ${entry.name} está truncada o tiene un tamaño incorrecto."
+                    }
+                }
+                if (entry.crc >= 0L) {
+                    require(checksum.value == entry.crc) {
+                        "La entrada ${entry.name} está dañada (CRC incorrecto)."
                     }
                 }
             }
