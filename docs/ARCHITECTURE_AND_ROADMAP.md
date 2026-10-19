@@ -9,7 +9,7 @@ NovaLoader will use a **hybrid architecture**:
 - Treat Geode packages as a separate format. A `.geode` archive must not be described as runnable merely because its metadata can be read.
 - Do not copy proprietary game files or compiled Geode binaries into this repository.
 
-## Target architecture
+## Environment staging (v0.4.0)\n\nWhen the user presses the Geometry Dash action, NovaLoader copies the installed base APK and split APKs, plus extracted native libraries, into `files/game-environment/game-files/`. It writes `environment.json` with version, ABI, size, and SHA-256 information. Imported `.nova` and `.geode` archives are stored under `files/game-environment/mods/`. The original installation is not modified. This is only staging: Android does not execute APKs from this private directory, and the copied app is not yet patched, re-signed, installed, or modded.\n\n## Target architecture
 
 ```text
 NovaLoader Android UI
@@ -52,7 +52,7 @@ Version 1 is a ZIP archive with a root `manifest.json`. The manifest must identi
 
 1. **Launcher foundation** — game detection, explicit normal launch, truthful UI states and compatibility report.
 2. **Package manager** — metadata, install/uninstall/enable state, dependency display, integrity checks and storage management.
-3. **Native feasibility prototype** — JNI/CMake probe added in v0.3.0; next identify exact supported game builds and ABIs and investigate a maintainable backend.
+3. **Native feasibility prototype** — JNI/CMake probe added in v0.4.0; next identify exact supported game builds and ABIs and investigate a maintainable backend.
 4. **First verified mod** — load a deliberately small test mod in a controlled build; verify logs, safe mode and recovery on a real device.
 5. **Format/runtime contract** — document NOVA API and package ABI; only then enable execution for NOVA packages.
 6. **Compatibility and release** — test clean install, upgrade, failed launch, missing dependencies, invalid archives and recovery on each supported build/ABI.
